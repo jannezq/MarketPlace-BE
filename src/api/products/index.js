@@ -164,6 +164,82 @@ productsRouter.post(
 //REVIEW SECTION
 
 //POST a  comment on product by ID
-productsRouter.post("/");
+productsRouter.post(
+  "/:productId/reviews",
+  checkReviewSchema,
+  triggerBadRequest,
+  async (req, res, next) => {
+    try {
+      const productsArr = await getProducts();
+      const index = productsArr.findIndex((p) => p.id === req.params.productId);
+      if (index !== 1) {
+        const newReview = {
+          ...req.body,
+          productId: req.params.productId,
+          id: uniqid(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        const reviewsArr = await getReviews();
+        reviewsArr.push(newReview);
+        await writeReviews(reviewsArr);
+        res.status(201).send({
+          success: true,
+          message: "Thank you for you review!",
+          id: newReview.id,
+        });
+      } else {
+        next(
+          createHttpError(
+            404,
+            `no product found with id ${req.params.productId}`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// GET all reviews of a product
+productsRouter.get("/:productId/reviews", async (req, res, next) => {
+  try {
+    const reviews = await getReviews();
+    res.status(201).send(reviews);
+  } catch (error) {
+    next(error);
+  }
+});
+
+//GET A review
+productsRouter.get("/:productId/reviews/:reviewId", async (req, res, next) => {
+  try {
+    const productsArr = await getProducts();
+    const index = productsArr.findIndex((p) => p.id === req.params.productId);
+    if (index !== -1) {
+      const reviews = (await getReviews()).filter(
+        (r) => r.productId === req.params.productId
+      );
+      const foundReview = reviews.find((r) => r.id === req.params.reviewId);
+      if (foundReview) {
+        res.send(foundReview);
+      } else {
+        next(
+          createHttpError(
+            404,
+            `no review found with id ${req.params.reviewId} belonging to product with id ${req.params.productId}`
+          )
+        );
+      }
+    } else {
+      next(
+        createHttpError(404, `no product found with id ${req.params.productId}`)
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default productsRouter;
