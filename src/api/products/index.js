@@ -49,14 +49,14 @@ productsRouter.post(
 //GET a product by categor
 productsRouter.get("/", async (req, res, next) => {
   try {
-    const products = await getProducts();
+    const productArr = await getProducts();
     if (req.query && req.query.category) {
-      const productsByCategory = products.filter(
+      const productsByCategory = productArr.filter(
         (p) => p.category.toLowerCase() === req.query.category.toLowerCase()
       );
       res.send(productsByCategory);
     } else {
-      res.send(products);
+      res.send(productArr);
     }
   } catch (error) {
     next(error);
@@ -64,8 +64,10 @@ productsRouter.get("/", async (req, res, next) => {
 }); //GET a product by ID
 productsRouter.get("/:productId", async (req, res, next) => {
   try {
-    const products = await getProducts();
-    const specificProduct = products.find((p) => p.id === req.params.productId);
+    const productArr = await getProducts();
+    const specificProduct = productArr.find(
+      (p) => p.id === req.params.productId
+    );
     res.send(specificProduct);
   } catch (error) {
     next(error);
@@ -78,16 +80,16 @@ productsRouter.put(
   triggerBadRequest,
   async (req, res, next) => {
     try {
-      const products = await getProducts();
-      const index = products.findIndex((p) => p.id === req.params.productId);
+      const productArr = await getProducts();
+      const index = productArr.findIndex((p) => p.id === req.params.productId);
       if (index !== -1) {
         const updatedProduct = {
-          ...products[index],
+          ...productArr[index],
           ...req.body,
           updatedAt: new Date(),
         };
-        products[index] = updatedProduct;
-        await writeProducts(products);
+        productArr[index] = updatedProduct;
+        await writeProducts(productArr);
         res.send({
           success: true,
           message: "Product updated!",
@@ -107,11 +109,11 @@ productsRouter.put(
 //DELETE a product by ID
 productsRouter.delete("/:productId", async (req, res, next) => {
   try {
-    const products = await getProducts();
-    const remainingProducts = products.filter(
+    const productArr = await getProducts();
+    const remainingProducts = productArr.filter(
       (p) => p.id !== req.params.productId
     );
-    if (products.length !== remainingProducts.length) {
+    if (productArr.length !== remainingProducts.length) {
       await writeProducts(remainingProducts);
       res.status(204).send();
     } else {
@@ -133,16 +135,16 @@ productsRouter.post(
   multer().single("image"),
   async (req, res, next) => {
     try {
-      const products = await getProducts();
-      const index = products.findIndex((p) => p.id === req.params.productId);
+      const productArr = await getProducts();
+      const index = productArr.findIndex((p) => p.id === req.params.productId);
       if (index !== -1) {
         const fileExtension = extname(req.file.originalname);
         const fileName = req.params.productId + fileExtension;
         await saveProductImage(fileName, req.file.buffer);
-        products[
+        productArr[
           index
-        ].imageUrl = `http://localhost:3001/img/products/${fileName}`;
-        await writeProducts(products);
+        ].imageUrl = `http://localhost:3001/img/productArr/${fileName}`;
+        await writeProducts(productArr);
         res.status(201).send({
           success: true,
           message: `Image uploaded to product with id ${req.params.productId}`,
@@ -205,8 +207,20 @@ productsRouter.post(
 // GET all reviews of a product
 productsRouter.get("/:productId/reviews", async (req, res, next) => {
   try {
-    const reviews = await getReviews();
-    res.status(201).send(reviews);
+    const productArr = await getProducts();
+    const index = productArr.find((p) => p.id === req.params.productId);
+    if (index !== -1) {
+      const reviewsArr = await getReviews();
+      reviewsArr.find((r) => r.productId === req.params.productId);
+      res.status(201).send(reviewsArr);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Sorry no product found with id ${req.params.productId}`
+        )
+      );
+    }
   } catch (error) {
     next(error);
   }
@@ -218,10 +232,10 @@ productsRouter.get("/:productId/reviews/:reviewId", async (req, res, next) => {
     const productsArr = await getProducts();
     const index = productsArr.findIndex((p) => p.id === req.params.productId);
     if (index !== -1) {
-      const reviews = (await getReviews()).filter(
+      const reviewsArr = (await getReviews()).filter(
         (r) => r.productId === req.params.productId
       );
-      const foundReview = reviews.find((r) => r.id === req.params.reviewId);
+      const foundReview = reviewsArr.find((r) => r.id === req.params.reviewId);
       if (foundReview) {
         res.send(foundReview);
       } else {
@@ -241,5 +255,108 @@ productsRouter.get("/:productId/reviews/:reviewId", async (req, res, next) => {
     next(error);
   }
 });
+
+//PUT a product review
+// productsRouter.put(
+//   "/:productId/reviews/:reviewId",
+//   checkReviewSchema,
+//   triggerBadRequest,
+//   async (req, res, next) => {
+//     try {
+//       const productArr = await getProducts();
+//       const i = productArr.findIndex((p) => p.id === req.params.productId);
+//       if (i !== -1) {
+//         const reviewsArr = await getReviews();
+//         const j = reviewsArr.findIndex((r) => r.id === req.params.reviewId);
+//         if (j !== -1) {
+//           if (reviewsArr[j].productId === req.params.productId) {
+//             const updatedReview = {
+//               ...reviewsArr[j],
+//               ...req.body,
+//               updatedAt: new Date(),
+//             };
+//             reviewsArr[j] = updatedReview;
+//             await writeReviews(reviewsArr);
+//             res.send({
+//               updatedReview,
+//             });
+//           } else {
+//             next(
+//               createHttpError(
+//                 404,
+//                 `Review with id ${req.params.reviewId} does not belong to product with id ${req.params.productId}`
+//               )
+//             );
+//           }
+//         } else {
+//           next(
+//             createHttpError(
+//               404,
+//               `no review found with id ${req.params.reviewId}`
+//             )
+//           );
+//         }
+//       } else {
+//         next(
+//           createHttpError(
+//             404,
+//             `no product found with id ${req.params.productId}`
+//           )
+//         );
+//       }
+//     } catch (error) {
+//       next(error);
+//     }
+//   }
+// );
+
+//DELETE product review
+productsRouter.delete(
+  "/:productId/reviews/:reviewId",
+  async (req, res, next) => {
+    try {
+      const productArr = await getProducts();
+      const i = productArr.findIndex((p) => p.id === req.params.productId);
+      if (i !== -1) {
+        const reviewsArr = await getReviews();
+        const j = reviewsArr.findIndex((r) => r.id === req.params.reviewId);
+        if (j !== -1) {
+          if (reviewsArr[j].productId === req.params.productId) {
+            const remainingReviews = reviewsArr.filter(
+              (r) => r.id !== req.params.reviewId
+            );
+            await writeReviews(remainingReviews);
+            res.status(204).send({
+              message: `Review for product ID: ${req.params.productId} has been deleted!`,
+            });
+          } else {
+            next(
+              createHttpError(
+                404,
+                `review with id ${req.params.reviewId} does not belong to product with id ${req.params.productId}`
+              )
+            );
+          }
+        } else {
+          next(
+            createHttpError(
+              404,
+              `no review found with id ${req.params.reviewId}`
+            )
+          );
+        }
+      } else {
+        next(
+          createHttpError(
+            404,
+            `no product found with id ${req.params.productId}`
+          )
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default productsRouter;

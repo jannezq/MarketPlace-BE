@@ -21,12 +21,12 @@ const productSchema = {
       errorMessage: "Brand is a mandatory field and it needs to be a string!",
     },
   },
-  imageUrl: {
-    in: ["body"],
-    isString: {
-      errorMessage: "Image URL needs to be a string!",
-    },
-  },
+  // imageUrl: {
+  //   in: ["body"],
+  //   isString: {
+  //     errorMessage: "Image URL needs to be a string!",
+  //   },
+  // },
   price: {
     in: ["body"],
     isNumeric: {
