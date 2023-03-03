@@ -210,8 +210,8 @@ productsRouter.get("/:productId/reviews", async (req, res, next) => {
     const productArr = await getProducts();
     const index = productArr.find((p) => p.id === req.params.productId);
     if (index !== -1) {
-      const reviewsArr = await getReviews();
-      reviewsArr.find((r) => r.productId === req.params.productId);
+      let reviewsArr = await getReviews();
+      reviewsArr = reviewsArr.find((r) => r.reviewId === req.params.reviewId);
       res.status(201).send(reviewsArr);
     } else {
       next(
@@ -257,99 +257,54 @@ productsRouter.get("/:productId/reviews/:reviewId", async (req, res, next) => {
 });
 
 //PUT a product review
-// productsRouter.put(
-//   "/:productId/reviews/:reviewId",
-//   checkReviewSchema,
-//   triggerBadRequest,
-//   async (req, res, next) => {
-//     try {
-//       const productArr = await getProducts();
-//       const i = productArr.findIndex((p) => p.id === req.params.productId);
-//       if (i !== -1) {
-//         const reviewsArr = await getReviews();
-//         const j = reviewsArr.findIndex((r) => r.id === req.params.reviewId);
-//         if (j !== -1) {
-//           if (reviewsArr[j].productId === req.params.productId) {
-//             const updatedReview = {
-//               ...reviewsArr[j],
-//               ...req.body,
-//               updatedAt: new Date(),
-//             };
-//             reviewsArr[j] = updatedReview;
-//             await writeReviews(reviewsArr);
-//             res.send({
-//               updatedReview,
-//             });
-//           } else {
-//             next(
-//               createHttpError(
-//                 404,
-//                 `Review with id ${req.params.reviewId} does not belong to product with id ${req.params.productId}`
-//               )
-//             );
-//           }
-//         } else {
-//           next(
-//             createHttpError(
-//               404,
-//               `no review found with id ${req.params.reviewId}`
-//             )
-//           );
-//         }
-//       } else {
-//         next(
-//           createHttpError(
-//             404,
-//             `no product found with id ${req.params.productId}`
-//           )
-//         );
-//       }
-//     } catch (error) {
-//       next(error);
-//     }
-//   }
-// );
+productsRouter.put(
+  "/:productId/reviews/reviewId",
+  checkReviewSchema,
+  triggerBadRequest,
+  async (req, res, next) => {
+    try {
+      const reviewsArr = await getReviews();
+      const index = reviewsArr.findIndex((r) => r.id === req.params.reviewId);
+      if (index !== -1) {
+        const oldReview = reviewsArr[index];
+        const updatedReview = {
+          ...oldReview,
+          ...req.body,
+          updatedAt: new Date(),
+        };
+
+        reviewsArr[index] = updatedReview;
+        await writeReviews(reviewsArr);
+        res.status(200).send(updatedReview);
+      } else {
+        createHttpError(
+          404,
+          `Review with the id ${req.params.reviewId} not found!`
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 //DELETE product review
 productsRouter.delete(
   "/:productId/reviews/:reviewId",
   async (req, res, next) => {
     try {
-      const productArr = await getProducts();
-      const i = productArr.findIndex((p) => p.id === req.params.productId);
-      if (i !== -1) {
-        const reviewsArr = await getReviews();
-        const j = reviewsArr.findIndex((r) => r.id === req.params.reviewId);
-        if (j !== -1) {
-          if (reviewsArr[j].productId === req.params.productId) {
-            const remainingReviews = reviewsArr.filter(
-              (r) => r.id !== req.params.reviewId
-            );
-            await writeReviews(remainingReviews);
-            res.status(204).send({
-              message: `Review for product ID: ${req.params.productId} has been deleted!`,
-            });
-          } else {
-            next(
-              createHttpError(
-                404,
-                `review with id ${req.params.reviewId} does not belong to product with id ${req.params.productId}`
-              )
-            );
-          }
-        } else {
-          next(
-            createHttpError(
-              404,
-              `no review found with id ${req.params.reviewId}`
-            )
-          );
-        }
+      const reviewsArr = await getReviews();
+      const remainingReviews = reviewsArr.filter(
+        (r) => r.id !== req.params.reviewId
+      );
+      if (reviewsArr.length !== remainingReviews.length) {
+        writeReviews(remainingReviews);
+        res.status(204).send();
       } else {
         next(
           createHttpError(
             404,
-            `no product found with id ${req.params.productId}`
+            `Review with id ${req.params.reviewId} not found!`
           )
         );
       }
